@@ -1,0 +1,14 @@
+{
+  "name": "Java Dev Container",
+	"dockerComposeFile": "../compose.yaml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+
+	"features": {
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "25",
+			"installMaven": "false",
+			"installGradle": "false"
+		}
+	}
+}

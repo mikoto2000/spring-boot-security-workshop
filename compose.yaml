@@ -1,0 +1,29 @@
+services:
+  dev:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    environment:
+      DATASOURCE_URL: jdbc:postgresql://postgres:5432/todo
+      DATASOURCE_USERNAME: admin
+      DATASOURCE_PASSWORD: password
+    ports:
+      - 8080:8080
+    command: ['sh', '-c',  'trap "exit 0" TERM; sleep infinity & wait']
+    volumes:
+      - ./:/workspace:cached
+  postgres:
+    image: postgres:17
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_DB: todo
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - 0.0.0.0:5432:5432
+volumes:
+  postgres_data:
+    driver: local
