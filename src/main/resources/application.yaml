@@ -1,3 +1,10 @@
 spring:
   application:
     name: security
+
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://postgres:5432/workshop}
+    username: ${DATASOURCE_USERNAME:admin}
+    password: ${DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
