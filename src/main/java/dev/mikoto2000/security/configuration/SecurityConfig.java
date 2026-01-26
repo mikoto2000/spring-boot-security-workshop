@@ -15,6 +15,7 @@ public class SecurityConfig {
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     // ログインフォームは Spring Security が提供するデフォルトを利用
     http.formLogin(Customizer.withDefaults())
+    .logout(Customizer.withDefaults())
     .authorizeHttpRequests(auth -> {
       auth
         // "/" は誰でも表示できる

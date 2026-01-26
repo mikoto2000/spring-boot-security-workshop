@@ -245,9 +245,116 @@ public class SecurityConfig {
 }
 ```
 
+SecurityFilterChain を Bean として定義すると、Spring Boot が自動設定していたデフォルトの SecurityFilterChain は無効化され、この設定が全面的に使われるようになります。
+
+
 ### 動作確認
 
 `http://localhost:8080` にアクセスするとトップページが表示され、「認証必須ページ」のリンクを押下するとログイン画面に遷移。
 その後ログインすると認証必須ページが表示されます。
 
 これで、認可設定のカスタマイズが確認できました。
+
+
+## ログアウトの実装
+
+認証認可のカスタマイズができたので、今度はログアウトの実装をしましょう。
+
+ログアウトは、 `SecurityFilterChain` にログアウトの設定を追加することで実現できます。
+
+### ログアウト設定の追加
+
+`src/main/java/dev/mikoto2000/security/configuration/SecurityConfig.java` を以下のように編集してください。
+
+```java
+package dev.mikoto2000.security.configuration;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+/**
+ * SecurityConfig
+ */
+@Configuration
+public class SecurityConfig {
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    // ログインフォームは Spring Security が提供するデフォルトを利用
+    http.formLogin(Customizer.withDefaults())
+    // ログアウト処理も、 Spring Security が提供するデフォルトを利用
+    .logout(Customizer.withDefaults())
+    .authorizeHttpRequests(auth -> {
+      auth
+        // "/" は誰でも表示できる
+        .requestMatchers("/").permitAll()
+        // その他ページは、ログイン済みでないと表示できない
+        .anyRequest().authenticated();
+    });
+    return http.build();
+  }
+}
+```
+
+Spring Security が提供するデフォルトでは、 `/logout` にアクセスするとログアウト確認画面が表示され、
+`Log Out` ボタンを押下するとログアウトし、 `/login` にリダイレクトされます。
+(ログアウトは、 `/logout` への `POST` リクエストで実行される)
+
+前述の通り、ログアウトは `/logout` への `POST` リクエストで実行されるため、
+自作のフォームから(ログアウト画面を介さず)ログアウトさせることも可能です。
+このあたりのカスタマイズはワークショップの後の方でやりましょう。
+
+
+### ログアウト用リンクの追加
+
+#### index.html
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>index</title>
+</head>
+<body>
+  Hello Spring Security.
+
+  <p>
+    <a href="/private">認証必須ページ</a>
+  </p>
+  <!-- 追加ここから -->
+  <p>
+    <a href="/logout">ログアウト</a>
+  </p>
+  <!-- 追加ここまで -->
+</body>
+</html>
+```
+
+#### private.html
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>認証必須ページ</title>
+</head>
+<body>
+  これが見えているという事は、認証に成功しています。
+  <!-- 追加ここから -->
+  <p>
+    <a href="/logout">ログアウト</a>
+  </p>
+  <!-- 追加ここまで -->
+</body>
+</html>
+```
+
+### 動作確認
+
+`http://localhost:8080` へアクセスし、private へ遷移 -> ログイン -> ログアウト -> ルート -> private というように移動してみましょう。
+ログアウトできていることが確認できます。
+
