@@ -70,6 +70,10 @@ This generated password is for development use only. Your security configuration
 
 ここでは、 Spring Security のカスタマイズポイントのひとつである「ログインユーザー取得ロジック」のカスタマイズを行います。
 
+Spring Security では、ログイン時に「ユーザー名から認証対象ユーザーを取得する処理」を `UserDetailsService` というインタフェースに切り出しています。
+
+この `UserDetailsService` を差し替えることで、「どこからユーザー情報を取得するか」をカスタマイズできるようになっています。
+
 `src/main/java/dev/mikoto2000/security/configuration/UserDetailsServiceImpl.java` を作成し、次のように実装します。
 
 ```java
@@ -113,12 +117,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 }
 ```
 
-こうすることで、「ユーザーを探して Spring Boot に認証対象の情報を渡す」という処理を自分で実装できます。
+こうすることで、「ユーザーを探して Spring Security の認証処理に必要なユーザー情報を返却する」という処理を自分で実装できます。
+(UserDetailsService を実装したクラスを Bean として登録すると、Spring Security が自動的にこれを認証処理に利用します)
 
 今回の実装では、メモリ上に HashMap でユーザー名とパスワードを保持し、そこからフォームから渡されたユーザー( `loadUserByUsername` の仮引数 `username` ) を探すように実装しています。
 
-本格的に実装するなら、 `loadUserByUsername` の中で DB 接続してユーザー情報を検索し、返却することになります。
+今回は仕組み理解が目的のため、DB ではなく HashMap を使って最小構成で実装していますが、
+本格的に実装するなら `loadUserByUsername` の中で DB 接続してユーザー情報を検索し、返却することになります。
 
 これはワークショップの後半でやってみましょう。
 
+また、パスワードについても、デフォルトで対応している `bcrypt` 形式でハッシュ化された文字列を使っています。
+ここもカスタマイズポイントですので、後の方で取り上げます。
 
