@@ -88,7 +88,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
 /**
- * UserDetailServiceImpl
+ * UserDetailsServiceImpl
  */
 @Component
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -120,7 +120,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 こうすることで、「ユーザーを探して Spring Security の認証処理に必要なユーザー情報を返却する」という処理を自分で実装できます。
 (UserDetailsService を実装したクラスを Bean として登録すると、Spring Security が自動的にこれを認証処理に利用します)
 
-今回の実装では、メモリ上に HashMap でユーザー名とパスワードを保持し、そこからフォームから渡されたユーザー( `loadUserByUsername` の仮引数 `username` ) を探すように実装しています。
+今回の実装では、メモリ上に HashMap でユーザー名とパスワードを保持し、そこからフォームから渡されたユーザー（ `loadUserByUsername` の仮引数 `username` ）を探すように実装しています。
 
 今回は仕組み理解が目的のため、DB ではなく HashMap を使って最小構成で実装していますが、
 本格的に実装するなら `loadUserByUsername` の中で DB 接続してユーザー情報を検索し、返却することになります。
@@ -130,3 +130,124 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 また、パスワードについても、デフォルトで対応している `bcrypt` 形式でハッシュ化された文字列を使っています。
 ここもカスタマイズポイントですので、後の方で取り上げます。
 
+
+## 認可のカスタマイズ
+
+ここからは「どのユーザーが、どのページを見られるか」を制御する「認可（Authorization）」の設定を行います。
+認証（ログインできるか）と認可（アクセスできるか）は、Spring Security では別の関心事として扱われます。
+
+`SecurityFilterChain` を Bean として定義することで、「認証方法」と「認可」のカスタマイズができます。
+今回は「認証方法」は Spring Security が提供するデフォルト（ユーザー名・パスワードによるフォームログイン）のままで、「認可」のみをカスタマイズしてみましょう。
+
+認可の条件は次の通りとします。
+
+- `/` （インデックスページ）は誰でも表示可能
+- `/private` はログイン済みユーザーしか表示できない
+
+
+### 認証必須ページの作成
+
+認証したら見えるページを作成します。
+
+`src/main/resources/templates/private.html` を作成します。
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>認証必須ページ</title>
+</head>
+<body>
+  これが見えているという事は、認証に成功しています。
+</body>
+</html>
+```
+
+### 認証必須ページのコントローラーを作成
+
+インデックスページと同じようにコントローラーを作成します。
+
+```java
+package dev.mikoto2000.security.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+/**
+ * PrivateController
+ */
+@Controller
+public class PrivateController {
+  @GetMapping("/private")
+  public String privatePage() {
+    return "private";
+  }
+}
+```
+
+### インデックスページの更新
+
+認証必須ページへのリンクを追加します。
+
+`src/main/resources/templates/index.html` を以下のように更新します。
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>index</title>
+</head>
+<body>
+  Hello Spring Security.
+
+  <!-- 追加ここから -->
+  <p>
+    <a href="/private">認証必須ページ</a>
+  </p>
+  <!-- 追加ここまで -->
+</body>
+</html>
+```
+
+### SecurityFilterChain の定義
+
+`src/main/java/dev/mikoto2000/security/configuration/SecurityConfig.java` を作成し、以下のように実装します。
+
+```java
+package dev.mikoto2000.security.configuration;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+
+/**
+ * SecurityConfig
+ */
+@Configuration
+public class SecurityConfig {
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    // ログインフォームは Spring Security が提供するデフォルトを利用
+    http.formLogin(Customizer.withDefaults())
+    .authorizeHttpRequests(auth -> {
+      auth
+        // "/" は誰でも表示できる
+        .requestMatchers("/").permitAll()
+        // その他ページは、ログイン済みでないと表示できない
+        .anyRequest().authenticated();
+    });
+    return http.build();
+  }
+}
+```
+
+### 動作確認
+
+`http://localhost:8080` にアクセスするとトップページが表示され、「認証必須ページ」のリンクを押下するとログイン画面に遷移。
+その後ログインすると認証必須ページが表示されます。
+
+これで、認可設定のカスタマイズが確認できました。
