@@ -10,10 +10,10 @@
   <p>
     <a href="/private">認証必須ページ</a>
   </p>
-  <!-- 追加ここから -->
-  <p>
-    <a href="/logout">ログアウト</a>
-  </p>
-  <!-- 追加ここまで -->
+  <!-- 変更ここから -->
+  <form method="post" th:action="@{/logout}">
+    <button type="submit">ログアウト</button>
+  </form>
+  <!-- 変更ここまで -->
 </body>
 </html>

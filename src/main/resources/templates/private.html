@@ -6,10 +6,10 @@
 </head>
 <body>
   これが見えているという事は、認証に成功しています。
-  <!-- 追加ここから -->
-  <p>
-    <a href="/logout">ログアウト</a>
-  </p>
-  <!-- 追加ここまで -->
+  <!-- 変更ここから -->
+  <form method="post" th:action="@{/logout}">
+    <button type="submit">ログアウト</button>
+  </form>
+  <!-- 変更ここまで -->
 </body>
 </html>
