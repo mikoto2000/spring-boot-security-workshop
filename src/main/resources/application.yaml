@@ -2,9 +2,21 @@ spring:
   application:
     name: security
 
+  # ワークショップ用 DB 設定
+  # メモリ上に DB を作成するため、アプリケーション終了で DB は破棄される
   datasource:
-    url: ${DATASOURCE_URL:jdbc:postgresql://postgres:5432/workshop}
-    username: ${DATASOURCE_USERNAME:admin}
-    password: ${DATASOURCE_PASSWORD:password}
-    driver-class-name: org.postgresql.Driver
+    url: ${DATASOURCE_URL:jdbc:h2:mem:workshopdb}
+    username: ${DATASOURCE_USERNAME:sa}
+    password: ${DATASOURCE_PASSWORD:}
+    driver-class-name: org.h2.Driver
+
+  # ワークショップ用 DB 初期化設定
+  # 起動時にスキーマとデータを初期化する
+  sql:
+    init:
+      mode: always
+
+  h2:
+    console:
+      enabled: false
 
