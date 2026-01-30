@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import dev.mikoto2000.security.reporitory.UsersRepository;
+import dev.mikoto2000.security.reporitory.UsersMapper;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -16,12 +16,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-  private final UsersRepository usersRepository;
+  private final UsersMapper usersMapper;
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
     // ユーザーの存在チェック
-    var userOpt = usersRepository.findByUsername(username);
+    var userOpt = usersMapper.findByUsername(username);
     if (userOpt.isEmpty()) {
       throw new UsernameNotFoundException("User not found.");
     }

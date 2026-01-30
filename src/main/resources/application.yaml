@@ -16,12 +16,6 @@ spring:
     init:
       mode: always
 
-  # ワークショップ用 DB 初期化設定
-  # JPA の初期化機能を無効化
-  jpa:
-    hibernate:
-      ddl-auto: none
-
   h2:
     console:
       enabled: false
