@@ -190,6 +190,159 @@ CSRF 対策のため、 Thymeleaf の機能を用いて `form` を構築しま�
 
 ## DB からユーザー情報を取得するように修正
 
+さて、これまでは簡単のためにユーザー情報を HashMap で保持していましたが、ここで DB から取得するように修正しましょう。
+
+今回は、インメモリの H2 DB と MyBatis の組み合わせを使います。
+
+### DB・テーブル定義について
+
+本プロジェクトには、既に H2 データベースの起動・接続・初期化の設定がされています。
+これらについてはワークショップの本題とはずれるので、テーブル定義の説明のみを行います。
+
+#### テーブル定義
+
+ユーザー情報を格納するテーブルは、 `USERS` テーブルとして定義しています。
+CREATE 文は `src/main/resources/schema.sql`, データは `src/main/resources/data.sql` で確認できます。
+
+また、ロールについてはテーブルに保持せず、 `ADMIN` 固定としています。
+
+`src/main/resources/schema.sql`:
+
+```sql
+CREATE TABLE USERS (
+  username VARCHAR(50) PRIMARY KEY,
+  password VARCHAR(255) NOT NULL,
+  enabled BOOLEAN NOT NULL
+);
+```
+
+`src/main/resources/data.sql`:
+
+```sql
+INSERT INTO USERS (username, password, enabled)
+VALUES
+(
+  'mikoto2000',
+  -- "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC" = "password"
+  '{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC',
+  true
+),
+(
+  'mikoto2001',
+  -- "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC" = "password"
+  '{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC',
+  true
+);
+```
+
+### エンティティの作成
+
+テーブルから取得した値を格納するためのクラスを作成します。
+
+`src/main/java/dev/mikoto2000/security/entity/User.java`:
+
+```java
+package dev.mikoto2000.security.entity;
+
+import lombok.Data;
+
+/**
+ * User
+ */
+@Data
+public class User {
+  private String username;
+  private String password;
+  private Boolean enabled;
+}
+```
+
+### マッパーの作成
+
+テーブルから情報を取得する Mapper インターフェースを作成します。
+
+`username` を基にユーザー情報を取得する IF を定義します。
+
+`src/main/java/dev/mikoto2000/security/reporitory/UsersMapper.java`:
+
+```java
+package dev.mikoto2000.security.reporitory;
+
+import java.util.Optional;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import dev.mikoto2000.security.entity.User;
+
+/**
+ * UsersMapper
+ */
+@Mapper
+public interface UsersMapper {
+  @Select("""
+          SELECT
+            username,
+            password,
+            enabled
+          FROM
+            USERS
+          WHERE
+            USERS.username = #{username}
+          """)
+  Optional<User> findByUsername(String username);
+}
+```
+
+### userDetailsServiceImpl の修正
+
+これまでに作ったエンティティとマッパーを利用して、 DB からユーザー情報を取得するように修正します。
+
+`src/main/java/dev/mikoto2000/security/configuration/UserDetailsServiceImpl.java`:
+
+```java
+package dev.mikoto2000.security.configuration;
+
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Component;
+
+import dev.mikoto2000.security.reporitory.UsersMapper;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * UserDetailsServiceImpl
+ */
+@Component
+@RequiredArgsConstructor
+public class UserDetailsServiceImpl implements UserDetailsService {
+
+  private final UsersMapper usersMapper;
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    // ユーザーの存在チェック
+    var userOpt = usersMapper.findByUsername(username);
+    if (userOpt.isEmpty()) {
+      throw new UsernameNotFoundException("User not found.");
+    }
+    var user = userOpt.get();
+
+    // 見つけたユーザーの情報を返却(今回はユーザー名・パスワード以外は固定位置で返却)
+    return User.withUsername(user.getUsername())
+      .password(user.getPassword())
+      .roles("ADMIN")
+      .disabled(!user.getEnabled())
+      .build();
+  }
+}
+```
+
+`loadUserByUsername` メソッド内で、 DI した `UsersMapper` を利用し、ユーザー情報を取得し、
+`User.withUsername` で Spring Security に返却するユーザー情報を組み立てます。
+
+
 ## ユーザー登録
 
 
