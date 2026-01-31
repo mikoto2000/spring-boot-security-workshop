@@ -204,7 +204,8 @@ CSRF 対策のため、 Thymeleaf の機能を用いて `form` を構築しま�
 ユーザー情報を格納するテーブルは、 `USERS` テーブルとして定義しています。
 CREATE 文は `src/main/resources/schema.sql`, データは `src/main/resources/data.sql` で確認できます。
 
-また、ロールについてはテーブルに保持せず、 `ADMIN` 固定としています。
+`role` カラムを用意していますが、まだロールによる認可制御は行いません。
+次のステップで、role を使った認可（RBAC）を導入します。
 
 `src/main/resources/schema.sql`:
 
@@ -212,26 +213,29 @@ CREATE 文は `src/main/resources/schema.sql`, データは `src/main/resources/
 CREATE TABLE USERS (
   username VARCHAR(50) PRIMARY KEY,
   password VARCHAR(255) NOT NULL,
-  enabled BOOLEAN NOT NULL
+  enabled BOOLEAN NOT NULL,
+  role VARCHAR(50) NOT NULL
 );
 ```
 
 `src/main/resources/data.sql`:
 
 ```sql
-INSERT INTO USERS (username, password, enabled)
+INSERT INTO USERS (username, password, enabled, role)
 VALUES
 (
   'mikoto2000',
   -- "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC" = "password"
   '{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC',
-  true
+  true,
+  'ADMIN'
 ),
 (
   'mikoto2001',
   -- "{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC" = "password"
   '{bcrypt}$2a$10$0OsB8/8crrUzT9O8VNJF.uF2sB1c7tpvqJ/COY0Hm9qtoCETRa1cC',
-  true
+  true,
+  'ADMIN'
 );
 ```
 
@@ -256,6 +260,7 @@ public class User {
   private String username;
   private String password;
   private Boolean enabled;
+  private String role;
 }
 ```
 
@@ -285,7 +290,8 @@ public interface UsersMapper {
           SELECT
             username,
             password,
-            enabled
+            enabled,
+            role
           FROM
             USERS
           WHERE
@@ -331,10 +337,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
     var user = userOpt.get();
 
-    // 見つけたユーザーの情報を返却(今回はユーザー名・パスワード以外は固定位置で返却)
+    // 見つけたユーザーの情報を返却
     return User.withUsername(user.getUsername())
       .password(user.getPassword())
-      .roles("ADMIN")
+      .roles(user.getRole())
       .disabled(!user.getEnabled())
       .build();
   }
@@ -446,7 +452,8 @@ public interface UsersMapper {
           SELECT
             username,
             password,
-            enabled
+            enabled,
+            role
           FROM
             USERS
           WHERE
@@ -460,13 +467,15 @@ public interface UsersMapper {
           (
             username,
             password,
-            enabled
+            enabled,
+            role
           )
             VALUES
           (
             #{username},
             #{password},
-            #{enabled}
+            #{enabled},
+            #{role}
           )
           """)
   int insert(User user);
@@ -524,7 +533,8 @@ public class SignupController {
 
     try {
       // ユーザーをテーブルへインサート
-      User user = new User(username, hashedPassword, true);
+      // ロールは固定で "ADMIN" とする
+      User user = new User(username, hashedPassword, true, "ADMIN");
       usersMapper.insert(user);
     } catch (RuntimeException e) {
       log.error("ユーザー登録で例外が発生しました", e);
@@ -536,13 +546,13 @@ public class SignupController {
   }
 
 }
+
 ```
 
 GET リクエストでサインアップページを表示し、そこから POST リクエストを受け取ることでユーザー登録を行います。
 
 ユーザー登録では、 DI した `PasswordEncoder` を利用しパスワードをハッシュ化することで、
 Spring Security が読み込めるハッシュ形式のパスワードを生成します。
-
 
 ### View の追加
 
@@ -591,11 +601,11 @@ Spring Security が読み込めるハッシュ形式のパスワードを生成�
 <!DOCTYPE html>
 <html>
   <head>
-    <title>SIGNIN</title>
+    <title>SIGNUP</title>
     <meta charset="UTF-8">
   </head>
   <body>
-    <h1>サインインページ</h1>
+    <h1>サインアップページ</h1>
     <div th:if="${param.error}">
       エラーが発生しました。
     </div>

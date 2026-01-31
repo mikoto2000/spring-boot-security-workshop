@@ -17,7 +17,8 @@ public interface UsersMapper {
           SELECT
             username,
             password,
-            enabled
+            enabled,
+            role
           FROM
             USERS
           WHERE
@@ -31,13 +32,15 @@ public interface UsersMapper {
           (
             username,
             password,
-            enabled
+            enabled,
+            role
           )
             VALUES
           (
             #{username},
             #{password},
-            #{enabled}
+            #{enabled},
+            #{role}
           )
           """)
   int insert(User user);

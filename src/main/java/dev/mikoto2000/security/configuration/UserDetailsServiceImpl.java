@@ -27,10 +27,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
     var user = userOpt.get();
 
-    // 見つけたユーザーの情報を返却(今回はユーザー名・パスワード以外は固定位置で返却)
+    // 見つけたユーザーの情報を返却
     return User.withUsername(user.getUsername())
       .password(user.getPassword())
-      .roles("ADMIN")
+      .roles(user.getRole())
       .disabled(!user.getEnabled())
       .build();
   }

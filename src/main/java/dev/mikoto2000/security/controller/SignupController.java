@@ -38,7 +38,7 @@ public class SignupController {
 
     try {
       // ユーザーをテーブルへインサート
-      User user = new User(username, hashedPassword, true);
+      User user = new User(username, hashedPassword, true, "ADMIN");
       usersMapper.insert(user);
     } catch (RuntimeException e) {
       log.error("ユーザー登録で例外が発生しました", e);
